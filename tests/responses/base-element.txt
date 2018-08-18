@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=UTF-8
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <link rel="webmention" href="endpoint">
+    <base href="https://example.com/folder/">
+  </head>
+  <body></body>
+</html>

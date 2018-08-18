@@ -10,9 +10,10 @@ use Zegnat\Webmention\EndpointDiscovery;
 use Http\Client\Curl\Client as Curl;
 use Nyholm\Psr7\Factory\HttplugFactory;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use Zend\Diactoros\Response\Serializer as Response;
 
 /**
- * @covers \Zegnat\Webmention\EndpointDiscovery
+ * @coversDefaultClass \Zegnat\Webmention\EndpointDiscovery
  */
 class EndpointDiscoveryTest extends TestCase
 {
@@ -24,6 +25,30 @@ class EndpointDiscoveryTest extends TestCase
         $factory = new HttplugFactory();
         self::$live = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
         self::$offline = new EndpointDiscovery(new FakeHttp(), new Psr17Factory());
+    }
+
+    /**
+     * @dataProvider localTests
+     * @covers ::discover
+     */
+    public function testLocal(string $expected, string $responseFile, string $baseUrl)
+    {
+        $response = Response::fromString(file_get_contents($responseFile));
+        $fakeHttp = $this->createMock(FakeHttp::class);
+        $fakeHttp->method('sendRequest')->willReturn($response);
+        $discoverer = new EndpointDiscovery($fakeHttp, new Psr17Factory());
+        $this->assertEquals($expected, $discoverer->discover($baseUrl));
+    }
+
+    public function localTests()
+    {
+        return [
+            'HTML <link> tag, relative URL, <base> tag required' => [
+                'https://example.com/folder/endpoint',
+                __DIR__ . '/responses/base-element.txt',
+                'https://example.com/'
+            ]
+        ];
     }
 
     /**
