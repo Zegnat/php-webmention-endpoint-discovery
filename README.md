@@ -25,6 +25,14 @@ echo $discoverer->discover('https://webmention.rocks/test/1');
 
 ## Testing
 
+For quick testing without logging, coverage reports, or live calls to [Webmention Rocks!](https://webmention.rocks/):
+
+``` bash
+$ composer test -- --no-logging --no-coverage --exclude-group internet
+```
+
+Else:
+
 ``` bash
 $ composer test
 ```
