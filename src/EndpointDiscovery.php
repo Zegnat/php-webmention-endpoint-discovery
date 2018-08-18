@@ -58,7 +58,7 @@ class EndpointDiscovery
         if (0 === $links->length) {
             return null;
         }
-        if (0 !== ($base = $xpath->query('//base[@href][1]/@href'))->length) {
+        if (0 !== ($base = $xpath->query('//html:base[@href][1]/@href'))->length) {
             $url = $url->resolve($base->item(0)->value);
         }
         return (string)$url->resolve($links->item(0)->value);
