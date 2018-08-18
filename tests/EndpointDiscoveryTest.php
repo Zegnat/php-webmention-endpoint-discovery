@@ -31,7 +31,7 @@ class EndpointDiscoveryTest extends TestCase
      * @dataProvider localTests
      * @covers ::discover
      */
-    public function testLocal(string $expected, string $responseFile, string $baseUrl)
+    public function testLocal(?string $expected, string $responseFile, string $baseUrl)
     {
         $response = Response::fromString(file_get_contents($responseFile));
         $fakeHttp = $this->createMock(FakeHttp::class);
@@ -46,6 +46,11 @@ class EndpointDiscoveryTest extends TestCase
             'HTML <link> tag, relative URL, <base> tag required' => [
                 'https://example.com/folder/endpoint',
                 __DIR__ . '/responses/base-element.txt',
+                'https://example.com/'
+            ],
+            'No endpoint' => [
+                null,
+                __DIR__ . '/responses/no-endpoint.txt',
                 'https://example.com/'
             ]
         ];
