@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Tests\Zegnat\Webmention;
 
-use PHPUnit\Framework\TestCase;
-use Masterminds\HTML5;
-use Zegnat\Webmention\EndpointDiscovery;
 use Http\Client\Curl\Client as Curl;
+use InvalidArgumentException;
+use Masterminds\HTML5;
 use Nyholm\Psr7\Factory\HttplugFactory;
 use Nyholm\Psr7\Factory\Psr17Factory;
+use PHPUnit\Framework\TestCase;
+use Zegnat\Webmention\EndpointDiscovery;
 use Zend\Diactoros\Response\Serializer as Response;
 
 /**
@@ -25,6 +26,12 @@ class EndpointDiscoveryTest extends TestCase
         $factory = new HttplugFactory();
         self::$live = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
         self::$offline = new EndpointDiscovery(new FakeHttp(), new Psr17Factory());
+    }
+
+    public function testRelativeUrl()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        self::$offline->discover('/folder/endpoint');
     }
 
     /**

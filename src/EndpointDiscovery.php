@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Zegnat\Webmention;
 
 use DOMXPath;
-use Exception;
 use HTTP2;
 use Http\Client\HttpClient;
+use InvalidArgumentException;
 use Masterminds\HTML5;
 use Net_URL2;
 use Psr\Http\Message\RequestFactoryInterface;
@@ -28,7 +28,7 @@ class EndpointDiscovery
     {
         $url = new Net_URL2($url);
         if (false === $url->isAbsolute()) {
-            throw new Exception('EndpointDiscovery::discover() requires an absolute URL.');
+            throw new InvalidArgumentException('EndpointDiscovery::discover() requires an absolute URL.');
         }
         $headRequest = $this->requestFactory->createRequest('HEAD', (string)$url);
         $response = $this->httpClient->sendRequest($headRequest);
