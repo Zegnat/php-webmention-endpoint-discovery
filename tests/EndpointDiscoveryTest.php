@@ -16,21 +16,31 @@ use Nyholm\Psr7\Factory\Psr17Factory;
  */
 class EndpointDiscoveryTest extends TestCase
 {
-    private static $webmention;
+    private static $live;
+    private static $offline;
 
     public static function setUpBeforeClass()
     {
         $factory = new HttplugFactory();
-        self::$webmention = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
+        self::$live = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
+        self::$offline = new EndpointDiscovery(new FakeHttp(), new Psr17Factory());
+    }
+
+    /**
+     * @dataProvider webmentionRocks
+     */
+    public function testWebmentionRocks(string $expected, string $url)
+    {
+        $this->assertRegExp('@^https://webmention.rocks/test/'. $expected, self::$offline->discover($url));
     }
 
     /**
      * @dataProvider webmentionRocks
      * @group internet
      */
-    public function testWebmentionRocks(string $expected, string $url)
+    public function testWebmentionRocksLive(string $expected, string $url)
     {
-        $this->assertRegExp('@^https://webmention.rocks/test/'. $expected, self::$webmention->discover($url));
+        $this->assertRegExp('@^https://webmention.rocks/test/'. $expected, self::$live->discover($url));
     }
 
     public function webmentionRocks()

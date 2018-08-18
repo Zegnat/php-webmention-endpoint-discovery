@@ -1,0 +1,10 @@
+HTTP/1.1 200 OK
+Server: nginx/1.14.0
+Date: Sat, 18 Aug 2018 19:13:07 GMT
+Content-Type: text/html; charset=UTF-8
+Connection: keep-alive
+X-Powered-By: PHP/5.6.36-1+ubuntu16.04.1+deb.sury.org+1
+Link: <https://webmention.rocks/test/8/webmention?head=true>; rel="webmention"
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST
+
