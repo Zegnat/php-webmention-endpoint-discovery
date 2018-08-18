@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Zegnat\Webmention;
 
 use Http\Client\Curl\Client as Curl;
+use Http\Client\HttpClient;
 use InvalidArgumentException;
 use Masterminds\HTML5;
 use Nyholm\Psr7\Factory\HttplugFactory;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestFactoryInterface;
 use Zegnat\Webmention\EndpointDiscovery;
 use Zend\Diactoros\Response\Serializer as Response;
 
@@ -28,6 +30,13 @@ class EndpointDiscoveryTest extends TestCase
         self::$offline = new EndpointDiscovery(new FakeHttp(), new Psr17Factory());
     }
 
+    public function testConstruct()
+    {
+        $mockHttp = $this->createMock(HttpClient::class);
+        $mockFactory = $this->createMock(RequestFactoryInterface::class);
+        $this->assertInstanceOf(EndpointDiscovery::class, new EndpointDiscovery($mockHttp, $mockFactory));
+    }
+
     public function testRelativeUrl()
     {
         $this->expectException(InvalidArgumentException::class);
@@ -41,7 +50,7 @@ class EndpointDiscoveryTest extends TestCase
     public function testLocal(?string $expected, string $responseFile, string $baseUrl)
     {
         $response = Response::fromString(file_get_contents($responseFile));
-        $fakeHttp = $this->createMock(FakeHttp::class);
+        $fakeHttp = $this->createMock(HttpClient::class);
         $fakeHttp->method('sendRequest')->willReturn($response);
         $discoverer = new EndpointDiscovery($fakeHttp, new Psr17Factory());
         $this->assertEquals($expected, $discoverer->discover($baseUrl));
