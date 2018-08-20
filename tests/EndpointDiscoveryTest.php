@@ -68,6 +68,16 @@ class EndpointDiscoveryTest extends TestCase
                 null,
                 __DIR__ . '/responses/no-endpoint.txt',
                 'https://example.com/'
+            ],
+            'Image file, no Link header' => [
+                null,
+                __DIR__ . '/responses/image-without-endpoint.txt',
+                'https://example.com/png-transparent.png'
+            ],
+            'Image file, with Link header' => [
+                'https://example.com/folder/endpoint',
+                __DIR__ . '/responses/image-with-endpoint.txt',
+                'https://example.com/png-transparent.png'
             ]
         ];
     }
