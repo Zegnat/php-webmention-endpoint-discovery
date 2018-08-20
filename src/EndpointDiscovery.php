@@ -63,4 +63,36 @@ class EndpointDiscovery
         }
         return (string)$url->resolve($links->item(0)->value);
     }
+
+    /**
+     * Ignore endpoints that loopback to the local machine or other special IP addresses.
+     *
+     * This is an extension to the usual discovery that tries to blacklist all IP addresses in the private and
+     * reserved blocks. It is very much an experiment and should not be relied upon in production. (Yet.)
+     *
+     * @see https://webmention.net/draft/#avoid-sending-webmentions-to-localhost
+     */
+    public function secureDiscover(string $url): ?string
+    {
+        $url = $this->discover($url);
+        if (null === $url) {
+            return null;
+        }
+        $host = (new Net_URL2($url))->getHost();
+        if (false === \filter_var($host, FILTER_VALIDATE_IP)) {
+            $host = array_map(
+                function (array $item): string {
+                    return $item[$item['type'] === 'A' ? 'ip' : 'ipv6'];
+                },
+                \dns_get_record($host, DNS_A + DNS_AAAA)
+            );
+        }
+        $host = (array)$host;
+        foreach ($host as $ip) {
+            if (false === \filter_var($ip, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE)) {
+                return null;
+            }
+        }
+        return $url;
+    }
 }

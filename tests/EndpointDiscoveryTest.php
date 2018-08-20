@@ -46,6 +46,7 @@ class EndpointDiscoveryTest extends TestCase
     /**
      * @dataProvider localTests
      * @covers ::discover
+     * @covers ::secureDiscover
      */
     public function testLocal(?string $expected, string $responseFile, string $baseUrl)
     {
@@ -54,6 +55,7 @@ class EndpointDiscoveryTest extends TestCase
         $fakeHttp->method('sendRequest')->willReturn($response);
         $discoverer = new EndpointDiscovery($fakeHttp, new Psr17Factory());
         $this->assertEquals($expected, $discoverer->discover($baseUrl));
+        $this->assertEquals($expected, $discoverer->secureDiscover($baseUrl));
     }
 
     public function localTests()
@@ -79,6 +81,32 @@ class EndpointDiscoveryTest extends TestCase
                 __DIR__ . '/responses/image-with-endpoint.txt',
                 'https://example.com/png-transparent.png'
             ]
+        ];
+    }
+
+    /**
+     * @dataProvider loopbackTests
+     * @covers ::secureDiscover
+     */
+    public function testSecure(string $endpoint)
+    {
+        $factory = new Psr17Factory();
+        $response = $factory->createResponse(200, 'OK')
+            ->withHeader('Link', '<' . $endpoint . '>; rel="webmention"');
+        $fakeHttp = $this->createMock(HttpClient::class);
+        $fakeHttp->method('sendRequest')->willReturn($response);
+        $discoverer = new EndpointDiscovery($fakeHttp, $factory);
+        $this->assertEquals($endpoint, $discoverer->discover($endpoint));
+        $this->assertEquals(null, $discoverer->secureDiscover($endpoint));
+    }
+
+    public function loopbackTests()
+    {
+        return [
+            ['https://localhost/malicious/endpoint'],
+            ['http://192.168.1.1/'],
+            ['https://127.0.0.1/'],
+            ['http://127.0.0.1.xip.io/'],
         ];
     }
 
