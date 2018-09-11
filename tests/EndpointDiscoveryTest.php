@@ -55,7 +55,7 @@ class EndpointDiscoveryTest extends TestCase
         $fakeHttp->method('sendRequest')->willReturn($response);
         $discoverer = new EndpointDiscovery($fakeHttp, new Psr17Factory());
         $this->assertEquals($expected, $discoverer->discover($baseUrl));
-        $this->assertEquals($expected, $discoverer->secureDiscover($baseUrl));
+        $this->assertEquals($expected, $discoverer->secureDiscover($baseUrl)['url']);
     }
 
     public function localTests()
@@ -200,5 +200,21 @@ class EndpointDiscoveryTest extends TestCase
                 '23/page/webmention-endpoint/[^/]+$@', 'https://webmention.rocks/test/23/page'
             ],
         ];
+    }
+
+    /**
+     * @group internet
+     */
+    public function testSecureDiscovery()
+    {
+        $discover = self::$live->secureDiscover('https://webmention.rocks/test/1');
+        $this->assertArrayHasKey('url', $discover);
+        $this->assertSame('https://webmention.rocks/test/1/webmention?head=true', $discover['url']);
+        $this->assertArrayHasKey('host', $discover);
+        $this->assertSame('webmention.rocks', $discover['host']);
+        $this->assertArrayHasKey('ips', $discover);
+        $this->assertInternalType('array', $discover['ips']);
+        // Do not check exact values of the DNS lookup, instead make sure there are some:
+        $this->assertNotCount(0, $discover['ips']);
     }
 }

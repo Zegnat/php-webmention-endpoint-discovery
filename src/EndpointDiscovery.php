@@ -71,8 +71,11 @@ class EndpointDiscovery
      * reserved blocks. It is very much an experiment and should not be relied upon in production. (Yet.)
      *
      * @see https://webmention.net/draft/#avoid-sending-webmentions-to-localhost
+     *
+     * @return array Dictionary with three keys: `url` (string) for the discovered endpoint, `host` (string) for the
+     *               host the DNS records were checked for, and `ips` (array) for all checked DNS values.
      */
-    public function secureDiscover(string $url): ?string
+    public function secureDiscover(string $url): ?array
     {
         $url = $this->discover($url);
         if (null === $url) {
@@ -80,19 +83,24 @@ class EndpointDiscovery
         }
         $host = (new Net_URL2($url))->getHost();
         if (false === \filter_var($host, FILTER_VALIDATE_IP)) {
-            $host = array_map(
+            $ips = array_map(
                 function (array $item): string {
                     return $item[$item['type'] === 'A' ? 'ip' : 'ipv6'];
                 },
                 \dns_get_record($host, DNS_A + DNS_AAAA)
             );
+        } else {
+            $ips = (array)$host;
         }
-        $host = (array)$host;
-        foreach ($host as $ip) {
+        foreach ($ips as $ip) {
             if (false === \filter_var($ip, \FILTER_VALIDATE_IP, \FILTER_FLAG_NO_PRIV_RANGE | \FILTER_FLAG_NO_RES_RANGE)) {
                 return null;
             }
         }
-        return $url;
+        return [
+            'url' => $url,
+            'host' => $host,
+            'ips' => $ips,
+        ];
     }
 }
