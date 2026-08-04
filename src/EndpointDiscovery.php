@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace Zegnat\Webmention;
 
 use DOMXPath;
+use GuzzleHttp\Psr7\Uri;
+use GuzzleHttp\Psr7\UriResolver;
 use HTTP2;
 use Http\Client\HttpClient;
 use InvalidArgumentException;
 use Masterminds\HTML5;
-use Net_URL2;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -24,17 +25,20 @@ class EndpointDiscovery
         $this->requestFactory = $requestFactory;
     }
 
-    public function discover(string $url): ?string
+    /**
+     * @return string|null The discovered endpoint URL, or null if none was advertised.
+     */
+    public function discover(string $url)
     {
-        $url = new Net_URL2($url);
-        if (false === $url->isAbsolute()) {
+        $url = new Uri($url);
+        if (false === Uri::isAbsolute($url)) {
             throw new InvalidArgumentException('EndpointDiscovery::discover() requires an absolute URL.');
         }
         $headRequest = $this->requestFactory->createRequest('HEAD', (string)$url);
         $response = $this->httpClient->sendRequest($headRequest);
         while (\in_array($response->getStatusCode(), [301, 302, 307, 308]) &&
                 [] !== $location = $response->getHeader('location')) {
-            $url = $url->resolve($location[0]);
+            $url = UriResolver::resolve($url, new Uri($location[0]));
             $response = $this->httpClient->sendRequest($this->requestFactory->createRequest('HEAD', (string)$url));
         }
         $linkParser = new HTTP2();
@@ -44,7 +48,7 @@ class EndpointDiscovery
                 if (\array_key_exists('rel', $link) &&
                     \in_array('webmention', \array_map('strtolower', $link['rel']))
                 ) {
-                    return (string)$url->resolve($link['_uri']);
+                    return (string)UriResolver::resolve($url, new Uri($link['_uri']));
                 }
             }
         }
@@ -59,9 +63,9 @@ class EndpointDiscovery
             return null;
         }
         if (0 !== ($base = $xpath->query('//html:base[@href][1]/@href'))->length) {
-            $url = $url->resolve($base->item(0)->value);
+            $url = UriResolver::resolve($url, new Uri($base->item(0)->value));
         }
-        return (string)$url->resolve($links->item(0)->value);
+        return (string)UriResolver::resolve($url, new Uri($links->item(0)->value));
     }
 
     /**
@@ -72,16 +76,17 @@ class EndpointDiscovery
      *
      * @see https://webmention.net/draft/#avoid-sending-webmentions-to-localhost
      *
-     * @return array Dictionary with three keys: `url` (string) for the discovered endpoint, `host` (string) for the
-     *               host the DNS records were checked for, and `ips` (array) for all checked DNS values.
+     * @return array|null Dictionary with three keys: `url` (string) for the discovered endpoint, `host` (string) for
+     *                    the host the DNS records were checked for, and `ips` (array) for all checked DNS values.
+     *                    Null when no endpoint was found or it did not pass the checks.
      */
-    public function secureDiscover(string $url): ?array
+    public function secureDiscover(string $url)
     {
         $url = $this->discover($url);
         if (null === $url) {
             return null;
         }
-        $host = (new Net_URL2($url))->getHost();
+        $host = (new Uri($url))->getHost();
         if (false === \filter_var($host, FILTER_VALIDATE_IP)) {
             $ips = array_map(
                 function (array $item): string {
