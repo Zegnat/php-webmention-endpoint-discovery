@@ -23,7 +23,13 @@ class EndpointDiscoveryTest extends TestCase
     private static $live;
     private static $offline;
 
-    public static function setUpBeforeClass()
+    /**
+     * Annotated instead of overriding setUpBeforeClass: PHPUnit 8+ declares that
+     * method with a void return type, which PHP 7.0 cannot parse.
+     *
+     * @beforeClass
+     */
+    public static function setUpDiscoverers()
     {
         $factory = new HttplugFactory();
         self::$live = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
@@ -48,7 +54,7 @@ class EndpointDiscoveryTest extends TestCase
      * @covers ::discover
      * @covers ::secureDiscover
      */
-    public function testLocal(?string $expected, string $responseFile, string $baseUrl)
+    public function testLocal($expected, string $responseFile, string $baseUrl)
     {
         $response = Response::fromString(file_get_contents($responseFile));
         $fakeHttp = $this->createMock(HttpClient::class);
@@ -111,11 +117,24 @@ class EndpointDiscoveryTest extends TestCase
     }
 
     /**
+     * assertRegExp was replaced by assertMatchesRegularExpression in PHPUnit 9.1
+     * and warns from 9.3; PHPUnit 6.5 only has assertRegExp.
+     */
+    private function assertUrlMatches(string $pattern, $url)
+    {
+        if (method_exists($this, 'assertMatchesRegularExpression')) {
+            $this->assertMatchesRegularExpression($pattern, $url);
+        } else {
+            $this->assertRegExp($pattern, $url);
+        }
+    }
+
+    /**
      * @dataProvider webmentionRocks
      */
     public function testWebmentionRocks(string $expected, string $url)
     {
-        $this->assertRegExp('@^https://webmention.rocks/test/'. $expected, self::$offline->discover($url));
+        $this->assertUrlMatches('@^https://webmention.rocks/test/'. $expected, self::$offline->discover($url));
     }
 
     /**
@@ -124,7 +143,7 @@ class EndpointDiscoveryTest extends TestCase
      */
     public function testWebmentionRocksLive(string $expected, string $url)
     {
-        $this->assertRegExp('@^https://webmention.rocks/test/'. $expected, self::$live->discover($url));
+        $this->assertUrlMatches('@^https://webmention.rocks/test/'. $expected, self::$live->discover($url));
     }
 
     public function webmentionRocks()
@@ -213,7 +232,7 @@ class EndpointDiscoveryTest extends TestCase
         $this->assertArrayHasKey('host', $discover);
         $this->assertSame('webmention.rocks', $discover['host']);
         $this->assertArrayHasKey('ips', $discover);
-        $this->assertInternalType('array', $discover['ips']);
+        $this->assertTrue(is_array($discover['ips']));
         // Do not check exact values of the DNS lookup, instead make sure there are some:
         $this->assertNotCount(0, $discover['ips']);
     }
