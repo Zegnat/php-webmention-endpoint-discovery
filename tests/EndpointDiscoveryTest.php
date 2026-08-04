@@ -11,6 +11,7 @@ use Masterminds\HTML5;
 use Nyholm\Psr7\Factory\HttplugFactory;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Zegnat\Webmention\EndpointDiscovery;
 use Zend\Diactoros\Response\Serializer as Response;
@@ -41,6 +42,19 @@ class EndpointDiscoveryTest extends TestCase
         $mockHttp = $this->createMock(HttpClient::class);
         $mockFactory = $this->createMock(RequestFactoryInterface::class);
         $this->assertInstanceOf(EndpointDiscovery::class, new EndpointDiscovery($mockHttp, $mockFactory));
+    }
+
+    public function testConstructWithPsr18Client()
+    {
+        $mockHttp = $this->createMock(ClientInterface::class);
+        $mockFactory = $this->createMock(RequestFactoryInterface::class);
+        $this->assertInstanceOf(EndpointDiscovery::class, new EndpointDiscovery($mockHttp, $mockFactory));
+    }
+
+    public function testConstructRejectsNonClient()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new EndpointDiscovery('not a client', $this->createMock(RequestFactoryInterface::class));
     }
 
     public function testRelativeUrl()

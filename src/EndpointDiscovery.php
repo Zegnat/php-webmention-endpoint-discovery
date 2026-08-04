@@ -11,6 +11,7 @@ use HTTP2;
 use Http\Client\HttpClient;
 use InvalidArgumentException;
 use Masterminds\HTML5;
+use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 
@@ -19,8 +20,19 @@ class EndpointDiscovery
     private $httpClient;
     private $requestFactory;
 
-    public function __construct(HttpClient $httpClient, RequestFactoryInterface $requestFactory)
+    /**
+     * Both PSR-18 and HTTPlug v1 declare the identical sendRequest() signature,
+     * so either client type can serve all requests made during discovery.
+     *
+     * @param ClientInterface|HttpClient $httpClient A PSR-18 or HTTPlug v1 HTTP client.
+     */
+    public function __construct($httpClient, RequestFactoryInterface $requestFactory)
     {
+        if (false === $httpClient instanceof ClientInterface && false === $httpClient instanceof HttpClient) {
+            throw new InvalidArgumentException(
+                'EndpointDiscovery::__construct() requires a PSR-18 or HTTPlug v1 HTTP client.'
+            );
+        }
         $this->httpClient = $httpClient;
         $this->requestFactory = $requestFactory;
     }
