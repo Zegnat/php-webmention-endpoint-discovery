@@ -4,17 +4,23 @@ declare(strict_types=1);
 
 namespace Tests\Zegnat\Webmention;
 
+use GuzzleHttp\Psr7\HttpFactory;
+use GuzzleHttp\Psr7\Message;
 use Http\Client\Curl\Client as Curl;
 use Http\Client\HttpClient;
+use Http\Factory\Guzzle\RequestFactory;
+use Http\Factory\Guzzle\ResponseFactory;
+use Http\Factory\Guzzle\StreamFactory;
+use Http\Message\MessageFactory\GuzzleMessageFactory;
+use Http\Message\StreamFactory\GuzzleStreamFactory;
 use InvalidArgumentException;
 use Masterminds\HTML5;
-use Nyholm\Psr7\Factory\HttplugFactory;
-use Nyholm\Psr7\Factory\Psr17Factory;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\StreamFactoryInterface;
 use Zegnat\Webmention\EndpointDiscovery;
-use Zend\Diactoros\Response\Serializer as Response;
 
 /**
  * @coversDefaultClass \Zegnat\Webmention\EndpointDiscovery
@@ -32,9 +38,41 @@ class EndpointDiscoveryTest extends TestCase
      */
     public static function setUpDiscoverers()
     {
-        $factory = new HttplugFactory();
-        self::$live = new EndpointDiscovery(new Curl($factory, $factory), new Psr17Factory());
-        self::$offline = new EndpointDiscovery(new FakeHttp(), new Psr17Factory());
+        self::$live = new EndpointDiscovery(self::createLiveClient(), self::requestFactory());
+        self::$offline = new EndpointDiscovery(new FakeHttp(), self::requestFactory());
+    }
+
+    /**
+     * curl-client 2.x is PSR-18 and takes PSR-17 factories; 1.x is HTTPlug v1
+     * and takes the factories from php-http/message. The PHP 7.0 leg can only
+     * resolve 1.x, so support both.
+     */
+    private static function createLiveClient()
+    {
+        if (is_subclass_of(Curl::class, ClientInterface::class)) {
+            return new Curl(self::responseFactory(), self::streamFactory());
+        }
+        return new Curl(new GuzzleMessageFactory(), new GuzzleStreamFactory());
+    }
+
+    /**
+     * Guzzle only ships its own PSR-17 HttpFactory from psr7 2.0, which never
+     * installs on PHP 7.0-7.2. Fall back to http-interop/http-factory-guzzle
+     * there, which wraps guzzle psr7 1.x.
+     */
+    private static function requestFactory(): RequestFactoryInterface
+    {
+        return class_exists(HttpFactory::class) ? new HttpFactory() : new RequestFactory();
+    }
+
+    private static function responseFactory(): ResponseFactoryInterface
+    {
+        return class_exists(HttpFactory::class) ? new HttpFactory() : new ResponseFactory();
+    }
+
+    private static function streamFactory(): StreamFactoryInterface
+    {
+        return class_exists(HttpFactory::class) ? new HttpFactory() : new StreamFactory();
     }
 
     public function testConstruct()
@@ -70,10 +108,10 @@ class EndpointDiscoveryTest extends TestCase
      */
     public function testLocal($expected, string $responseFile, string $baseUrl)
     {
-        $response = Response::fromString(file_get_contents($responseFile));
+        $response = Message::parseResponse(file_get_contents($responseFile));
         $fakeHttp = $this->createMock(HttpClient::class);
         $fakeHttp->method('sendRequest')->willReturn($response);
-        $discoverer = new EndpointDiscovery($fakeHttp, new Psr17Factory());
+        $discoverer = new EndpointDiscovery($fakeHttp, self::requestFactory());
         $this->assertEquals($expected, $discoverer->discover($baseUrl));
         $this->assertEquals($expected, $discoverer->secureDiscover($baseUrl)['url']);
     }
@@ -110,12 +148,11 @@ class EndpointDiscoveryTest extends TestCase
      */
     public function testSecure(string $endpoint)
     {
-        $factory = new Psr17Factory();
-        $response = $factory->createResponse(200, 'OK')
+        $response = self::responseFactory()->createResponse(200, 'OK')
             ->withHeader('Link', '<' . $endpoint . '>; rel="webmention"');
         $fakeHttp = $this->createMock(HttpClient::class);
         $fakeHttp->method('sendRequest')->willReturn($response);
-        $discoverer = new EndpointDiscovery($fakeHttp, $factory);
+        $discoverer = new EndpointDiscovery($fakeHttp, self::requestFactory());
         $this->assertEquals($endpoint, $discoverer->discover($endpoint));
         $this->assertEquals(null, $discoverer->secureDiscover($endpoint));
     }
