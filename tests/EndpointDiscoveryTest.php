@@ -148,23 +148,47 @@ class EndpointDiscoveryTest extends TestCase
      */
     public function testSecure(string $endpoint)
     {
+        $this->assertLoopbackRejected($endpoint);
+    }
+
+    public function loopbackTests()
+    {
+        return [
+            ['http://192.168.1.1/'],
+            ['https://127.0.0.1/'],
+        ];
+    }
+
+    /**
+     * These endpoints only get rejected when live DNS resolves their hostnames
+     * to loopback addresses. nip.io provides the wildcard DNS xip.io once did.
+     *
+     * @dataProvider loopbackDnsTests
+     * @covers ::secureDiscover
+     * @group internet
+     */
+    public function testSecureDns(string $endpoint)
+    {
+        $this->assertLoopbackRejected($endpoint);
+    }
+
+    public function loopbackDnsTests()
+    {
+        return [
+            ['https://localhost/malicious/endpoint'],
+            ['http://127.0.0.1.nip.io/'],
+        ];
+    }
+
+    private function assertLoopbackRejected(string $endpoint)
+    {
         $response = self::responseFactory()->createResponse(200, 'OK')
             ->withHeader('Link', '<' . $endpoint . '>; rel="webmention"');
         $fakeHttp = $this->createMock(HttpClient::class);
         $fakeHttp->method('sendRequest')->willReturn($response);
         $discoverer = new EndpointDiscovery($fakeHttp, self::requestFactory());
         $this->assertEquals($endpoint, $discoverer->discover($endpoint));
-        $this->assertEquals(null, $discoverer->secureDiscover($endpoint));
-    }
-
-    public function loopbackTests()
-    {
-        return [
-            ['https://localhost/malicious/endpoint'],
-            ['http://192.168.1.1/'],
-            ['https://127.0.0.1/'],
-            ['http://127.0.0.1.xip.io/'],
-        ];
+        $this->assertNull($discoverer->secureDiscover($endpoint));
     }
 
     /**
