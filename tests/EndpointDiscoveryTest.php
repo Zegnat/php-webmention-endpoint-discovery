@@ -106,7 +106,7 @@ class EndpointDiscoveryTest extends TestCase
      * @covers ::discover
      * @covers ::secureDiscover
      */
-    public function testLocal($expected, string $responseFile, string $baseUrl)
+    public function testLocal(string $expected, string $responseFile, string $baseUrl)
     {
         $response = Message::parseResponse(file_get_contents($responseFile));
         $fakeHttp = $this->createMock(HttpClient::class);
@@ -124,19 +124,38 @@ class EndpointDiscoveryTest extends TestCase
                 __DIR__ . '/responses/base-element.txt',
                 'https://example.com/'
             ],
+            'Image file, with Link header' => [
+                'https://example.com/folder/endpoint',
+                __DIR__ . '/responses/image-with-endpoint.txt',
+                'https://example.com/png-transparent.png'
+            ]
+        ];
+    }
+
+    /**
+     * @dataProvider localTestsWithoutEndpoint
+     * @covers ::discover
+     * @covers ::secureDiscover
+     */
+    public function testLocalWithoutEndpoint(string $responseFile, string $baseUrl)
+    {
+        $response = Message::parseResponse(file_get_contents($responseFile));
+        $fakeHttp = $this->createMock(HttpClient::class);
+        $fakeHttp->method('sendRequest')->willReturn($response);
+        $discoverer = new EndpointDiscovery($fakeHttp, self::requestFactory());
+        $this->assertNull($discoverer->discover($baseUrl));
+        $this->assertNull($discoverer->secureDiscover($baseUrl));
+    }
+
+    public function localTestsWithoutEndpoint()
+    {
+        return [
             'No endpoint' => [
-                null,
                 __DIR__ . '/responses/no-endpoint.txt',
                 'https://example.com/'
             ],
             'Image file, no Link header' => [
-                null,
                 __DIR__ . '/responses/image-without-endpoint.txt',
-                'https://example.com/png-transparent.png'
-            ],
-            'Image file, with Link header' => [
-                'https://example.com/folder/endpoint',
-                __DIR__ . '/responses/image-with-endpoint.txt',
                 'https://example.com/png-transparent.png'
             ]
         ];
